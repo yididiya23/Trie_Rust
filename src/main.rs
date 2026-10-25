@@ -1,4 +1,5 @@
 use std::io;
+use std::fs;
 
 struct trie_root{  //defining a root that represents the whole trie  
     root: trieNode,  // the root node to have  an array with size 26 positons children initatied to be None
@@ -146,6 +147,35 @@ fn validity_check(word: &str) -> Result<String, &'static str> {
 
 
 }
+ 
+
+
+// reading the file 
+fn text_reader(trie: &mut trie_root, filename: &str) {
+
+    //reading the whole file as string 
+    let contents = fs::read_to_string(filename).expect("Could not read dictionary file");
+
+    for line in contents.lines() { //reading line by line 
+        let word = line.trim();
+
+        if !word.is_empty() {
+            match validity_check(word) {
+                Ok(valid_word) => {
+                    trie.insert(&valid_word); // this one is writing all the words in the memory one by one 
+                }
+                Err(message) => {
+                    println!("Skipping '{}': {}", word, message);
+                }
+            }
+        }
+    }
+    
+    
+    println!("Dictionary loaded successfully!");
+
+
+}
 
 
 
@@ -156,9 +186,12 @@ fn main() {
     let mut trie_dictionary = trie_root::new();
 
     // Optional starting words
-    trie_dictionary.insert("CAR");
-    trie_dictionary.insert("CART");
-    trie_dictionary.insert("CARE");
+    //trie_dictionary.insert("CAR");
+    //trie_dictionary.insert("CART");
+    //trie_dictionary.insert("CARE"); 
+
+    //Paasing the existing trie to the rader function 
+    text_reader(&mut trie_dictionary, r"C:\Users\yidid\rust_A2\trie\data\dictionary.txt");
 
     println!("Welcome to the Trie dictionary!");
 
