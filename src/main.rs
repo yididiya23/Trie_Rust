@@ -1,3 +1,5 @@
+use std::io;
+
 struct trie_root{  //defining a root that represents the whole trie  
     root: trieNode,  // the root node to have  an array with size 26 positons children initatied to be None
 } 
@@ -23,7 +25,7 @@ impl trie_root{ //to make the following func work on the struct defined above
 
         for l in word.chars(){  // breaking down the entry string to char
             
-            let i = (l as usize) - ('a' as usize); //giving the char a number like array startign from 0  
+            let i = (l as usize) - ('A' as usize); //giving the char a number like array startign from 0  
             
             //creating a child node of that char if the position is still None 
             if current.children_node[i].is_none() { 
@@ -42,25 +44,54 @@ impl trie_root{ //to make the following func work on the struct defined above
 
 
    // similar way of checking as the insert function 
-   fn search(& mut self, word: &str) -> bool{ 
+   fn search(&self, word: &str) -> bool{ 
         
         let mut current = &self.root;
 
         for l in word.chars() {
             
-            let i = (l as usize) - ('a' as usize); 
+            let i = (l as usize) - ('A' as usize); 
 
             if  current.children_node[i].is_none(){  
                 return false;
             }  
             
-            current = current.children_node[i].as_ref().unwrap();
+            current = current.children_node[i].as_ref().unwrap(); //making it immutable
         } 
        
          current.is_end_of_word 
 
-   }  
+   } 
+
+
+   fn delete(&mut self, word: &str) -> bool{
+    
+    let mut current = &mut self.root; 
+
+    for l in word.chars() {
+            
+            let i = (l as usize) - ('A' as usize); 
+
+            if  current.children_node[i].is_none(){  
+                return false;
+            }  
+            
+            current = current.children_node[i].as_mut().unwrap(); //making it mutable
+        }  
+    
+    //after reaching the last node, check if that node is marked as an end 
+    if current.is_end_of_word {  // if the word was there, change it false(remove the word)
+        current.is_end_of_word = false;
+        return true;
+    } 
+    else {
+        return false;
+    }
+
+   }
    
+
+
 
 
    
@@ -99,32 +130,117 @@ impl trieNode{
 
 
 
+fn validity_check(word: &str) -> Result<String, &'static str> {
+    
+    if word.is_empty() {
+        return Err("Please enter a word!");
+    } 
+
+     if !word.chars().all(|c| c.is_ascii_alphabetic()) {
+        return Err("Please enter letters A-Z only!");
+    } 
+
+    let word = word.to_ascii_uppercase(); 
+
+    Ok(word) //sends the uppercase of the word 
+
+
+}
+
+
+
+
+
 fn main() {
+    
     let mut trie_dictionary = trie_root::new();
 
-    trie_dictionary.insert("car");
-    trie_dictionary.insert("cart");
-    trie_dictionary.insert("care");
+    // Optional starting words
+    trie_dictionary.insert("CAR");
+    trie_dictionary.insert("CART");
+    trie_dictionary.insert("CARE");
 
-    let word = "cat";  
+    println!("Welcome to the Trie dictionary!");
 
-    if trie_dictionary.search(word) { //continues with the if segment if "true" is the output from the search 
+loop{  
+    println!("Enter a word (or '0' to exit)");
+
+    let mut input_word = String::new();  
+
+    //accepting the user input 
+    io::stdin().read_line(&mut input_word).unwrap();
+
+    // removing the before and after whitespace from the input 
+    let word = input_word.trim(); 
+
+    //checking if the user is trying to quit
+    if word == "0" {
+         println!("Goodbye!");
+         break;
+    }
+
+
+    // Validating the word
+    match validity_check(word) {
        
-        println!("Word '{}' already exists!", word);
-    } 
-   
-    else {
-        println!("Word '{}' was not found.", word);
-        println!("Adding it to the Trie now!");
+        Ok(valid_word) => {
+           
+            println!("Choose a task: Insert, Search, Delete");
 
-        trie_dictionary.insert(word);
+            let mut task = String::new();
+            io::stdin().read_line(&mut task).unwrap();
 
-        println!("The Word '{}' has been added!", word);
-    } 
-    
-    
-    println!("Does cat exist now? {}", trie_dictionary.search("cat"));
+            match task.trim().to_ascii_lowercase().as_str() {
+
+                "insert" => {
+                                if trie_dictionary.search(&valid_word) {
+                                    println!("Word already exists!");
+                                } 
+                                else {trie_dictionary.insert(&valid_word);
+                                        println!("Word added!");
+                                }
+                            }
+
+                "search" => {
+                                if trie_dictionary.search(&valid_word) {
+                                    println!("Word found!");
+                                } else {
+                                         println!("Word not found!"); 
+                                         println!("Adding it to the Trie now!"); 
+
+                                        trie_dictionary.insert(&valid_word); 
+
+                                        println!("Word '{}' has been added!", valid_word);
+
+                                }
+                            }
+
+                "delete" => { 
+                                if trie_dictionary.delete(&valid_word) {
+                                    println!("The Word is deleted!");
+                                } 
+
+                                else{ 
+                                    println!("The Word is not in the dictionary! It is safe!");
+                                } 
+                            }
+
+                _ => {
+                        println!("Invalid task! Please make sure to choose from insert/ search/ delete ");
+                     }
+
+            }
+        }
+        
+        Err(message) => {
+                println!("{}", message);
+                continue; 
+        }
+    }
+
+
 }
+ }
 
 
 
