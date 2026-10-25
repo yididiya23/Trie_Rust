@@ -21,23 +21,49 @@ impl trie_root{ //to make the following func work on the struct defined above
         let mut current = &mut self.root;  // borrow the address of the node's root and call it current 
 
 
-        for letter in word.chars(){  // breaking down the entry string to char
+        for l in word.chars(){  // breaking down the entry string to char
             
-            let index = (letter as usize) - ('a' as usize); //giving the char a number like array startign from 0  
+            let i = (l as usize) - ('a' as usize); //giving the char a number like array startign from 0  
             
             //creating a child node of that char if the position is still None 
-            if current.children_node[index].is_none() { 
-                current.children_node[index] = Some(Box::new(trieNode::new()));
+            if current.children_node[i].is_none() { 
+                current.children_node[i] = Some(Box::new(trieNode::new()));
             } 
-            else //move to that child, give it mutable access, and extract the node from option and update the current node
-            { current = current.children_node[index].as_mut().unwrap();} 
+             //move to that child, give it mutable access, and extract the node from option and update the current node
+             current = current.children_node[i].as_mut().unwrap();
 
 
         } 
 
     
         current.is_end_of_word = true;  // checks if the last letter that is given by the user is the last one 
-   } 
+   }  
+
+
+
+   // similar way of checking as the insert function 
+   fn search(& mut self, word: &str) -> bool{ 
+        
+        let mut current = &self.root;
+
+        for l in word.chars() {
+            
+            let i = (l as usize) - ('a' as usize); 
+
+            if  current.children_node[i].is_none(){  
+                return false;
+            }  
+            
+            current = current.children_node[i].as_ref().unwrap();
+        } 
+       
+         current.is_end_of_word 
+
+   }  
+   
+
+
+   
 
 }
 
@@ -80,12 +106,27 @@ fn main() {
     trie_dictionary.insert("cart");
     trie_dictionary.insert("care");
 
-    println!("Words inserted!"); 
+    let word = "cat";  
+
+    if trie_dictionary.search(word) { //continues with the if segment if "true" is the output from the search 
+       
+        println!("Word '{}' already exists!", word);
+    } 
+   
+    else {
+        println!("Word '{}' was not found.", word);
+        println!("Adding it to the Trie now!");
+
+        trie_dictionary.insert(word);
+
+        println!("The Word '{}' has been added!", word);
+    } 
     
     
-    println!("Root's c slot exists: {}", trie_dictionary.root.children_node[2].is_some());
-    println!("Root's d slot exists: {}", trie_dictionary.root.children_node[3].is_some());
-    println!("Root's a slot exists: {}", trie_dictionary.root.children_node[0].is_some());
+    println!("Does cat exist now? {}", trie_dictionary.search("cat"));
 }
+
+
+
   
 
