@@ -89,7 +89,87 @@ impl trie_root{ //to make the following func work on the struct defined above
         return false;
     }
 
-   }
+   } 
+
+
+   fn word_checker_from_file(&self, filename: &str) -> Result<(Vec<String>, Vec<String>), std::io::Error>{
+             
+        let contents = fs::read_to_string(filename)?;  
+
+        let mut found_words: Vec<String> = Vec::new();
+        let mut not_found_words: Vec<String> = Vec::new(); 
+
+
+       // Check each line in the file (handles: comma, new lines, or just space separated list)
+    for line in contents.split(|c: char| c == ',' || c.is_whitespace())  {
+        let word = line.trim();
+
+        // Skip empty lines
+        if word.is_empty() {
+            continue;
+        } 
+
+           match validity_check(word) { 
+
+            Ok(valid_word) => { 
+                if self.search(&valid_word) {
+                    found_words.push(valid_word); 
+
+                } else {
+                    not_found_words.push(valid_word);
+                }
+            }
+
+            Err(message) => {
+                println!("Skipping '{}': {}", word, message);
+            }
+        }
+    }
+
+    // Return both lists
+    Ok((found_words, not_found_words))
+}
+
+    
+
+fn delete_list_from_file(&mut self, filename: &str) -> Result<(), std::io::Error> {
+
+    // Read the file containing words to delete
+    let contents = fs::read_to_string(filename)?;
+
+    // Separate words at commas, spaces, or new lines
+    for word in contents.split(|c: char| c == ',' || c.is_whitespace()) {
+
+        let word = word.trim();
+
+        // Skip empty spaces
+        if word.is_empty() {
+            continue;
+        }
+
+        // Check the word and convert it to uppercase
+        match validity_check(word) {
+            Ok(valid_word) => {
+
+                // Delete the word if it exists
+                if self.delete(&valid_word) {
+                    println!("Deleted: {}", valid_word);
+                } else {
+                    println!("Word not found: {}", valid_word); // buts adds the word 
+                }
+            }
+
+            Err(message) => {
+                println!("Skipping '{}': {}", word, message);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+  
+
    
 
 
@@ -156,13 +236,14 @@ fn text_reader(trie: &mut trie_root, filename: &str) {
     //reading the whole file as string 
     let contents = fs::read_to_string(filename).expect("Could not read dictionary file");
 
-    for line in contents.lines() { //reading line by line 
+    for line in contents.split(|c: char| c == ',' || c.is_whitespace()) { //fro loop to add new words from the text 
         let word = line.trim();
 
         if !word.is_empty() {
             match validity_check(word) {
                 Ok(valid_word) => {
-                    trie.insert(&valid_word); // this one is writing all the words in the memory one by one 
+                    if !trie.search(&valid_word) { // this one is writing all the words that are not present yet
+                                trie.insert(&valid_word);}
                 }
                 Err(message) => {
                     println!("Skipping '{}': {}", word, message);
@@ -181,101 +262,188 @@ fn text_reader(trie: &mut trie_root, filename: &str) {
 
 
 
+
 fn main() {
-    
+
     let mut trie_dictionary = trie_root::new();
 
-    // Optional starting words
-    //trie_dictionary.insert("CAR");
-    //trie_dictionary.insert("CART");
-    //trie_dictionary.insert("CARE"); 
-
-    //Paasing the existing trie to the rader function 
-    text_reader(&mut trie_dictionary, r"C:\Users\yidid\rust_A2\trie\data\dictionary.txt");
+    // Load the dictionary into the Trie
+    text_reader(&mut trie_dictionary,r"C:\Users\yidid\rust_A2\trie\data\dictionary.txt");
 
     println!("Welcome to the Trie dictionary!");
 
-loop{  
-    println!("Enter a word (or '0' to exit)");
+    loop {
+        println!("\nChoose a task:");
+        println!("1. Insert");
+        println!("2. Search");
+        println!("3. Delete");
+        println!("4. GetFileChecked");
+        println!("5. DeleteListFromFile");
+        println!("0. Exit");
 
-    let mut input_word = String::new();  
+        let mut task = String::new();
+        //reading the line entered
+        io::stdin().read_line(&mut task).unwrap();
 
-    //accepting the user input 
-    io::stdin().read_line(&mut input_word).unwrap();
+        let task = task.trim().to_ascii_lowercase();
 
-    // removing the before and after whitespace from the input 
-    let word = input_word.trim(); 
+        // for the Exit program, 
+        if task == "0" || task == "exit" {
+            println!("Bye Bye!");
+            break;
+        }
 
-    //checking if the user is trying to quit
-    if word == "0" {
-         println!("Goodbye!");
-         break;
-    }
+        // Check words from a file
+        if task == "4" || task == "getfilechecked" {
+            match trie_dictionary.word_checker_from_file("C:/Users/yidid/rust_A2/trie/data/words_to_check.txt") {
+                Ok((found, not_found)) => {
+                    println!( "Here are the words already in the trie_dictionary: {:?}",found);
+                    println!("And these words were not found: {:?}", not_found);
+                }
+                Err(error) => {
+                    println!("Could not read file: {}", error);
+                }
+            }
 
+            continue;
+        }
 
-    // Validating the word
-    match validity_check(word) {
-       
-        Ok(valid_word) => {
-           
-            println!("Choose a task: Insert, Search, Delete");
+        // Delete words from a file
+        if task == "5" || task == "deletelistfromfile" {
+            match trie_dictionary.delete_list_from_file(
+                "C:/Users/yidid/rust_A2/trie/data/words_to_check.txt"
+            ) {
+                Ok(()) => {
+                    println!("The words are deleted from the dictionary as suggested in the text file !");
+                }
+                Err(error) => {
+                    println!("Could not read file: {}", error);
+                }
+            }
 
-            let mut task = String::new();
-            io::stdin().read_line(&mut task).unwrap();
+            continue;
+        }
 
-            match task.trim().to_ascii_lowercase().as_str() {
+        // Check that the task requires a single word
+        if task != "1" && task != "insert"
+            && task != "2" && task != "search"
+            && task != "3" && task != "delete"
+        {
+            println!("Invalid task! Please choose a task from 0 to 5.");
+            continue;
+        }
 
-                "insert" => {
-                                if trie_dictionary.search(&valid_word) {
-                                    println!("Word already exists!");
-                                } 
-                                else {trie_dictionary.insert(&valid_word);
-                                        println!("Word added!");
-                                }
-                            }
+        // Ask for a word only for Insert, Search, and Delete
+        println!("Enter a word (or '0' to return to the menu):");
 
-                "search" => {
-                                if trie_dictionary.search(&valid_word) {
-                                    println!("Word found!");
-                                } else {
-                                         println!("Word not found!"); 
-                                         println!("Adding it to the Trie now!"); 
+        let mut input_word = String::new();
+        io::stdin().read_line(&mut input_word).unwrap();
 
-                                        trie_dictionary.insert(&valid_word); 
+        let word = input_word.trim();
 
-                                        println!("Word '{}' has been added!", valid_word);
+        if word == "0" {continue;}
 
-                                }
-                            }
+        // Validate the word
+        match validity_check(word) {
+            Ok(valid_word) => {
+                match task.as_str() {
 
-                "delete" => { 
-                                if trie_dictionary.delete(&valid_word) {
-                                    println!("The Word is deleted!");
-                                } 
+                    "1" | "insert" => {
+                        if trie_dictionary.search(&valid_word) {
+                            println!("Word already exists!");
+                        } else {
+                            trie_dictionary.insert(&valid_word);
+                            println!("Word added!");
+                        }
+                    }
 
-                                else{ 
-                                    println!("The Word is not in the dictionary! It is safe!");
-                                } 
-                            }
+                    "2" | "search" => {
+                        if trie_dictionary.search(&valid_word) {
+                            println!("Word found!");
+                        } else {
+                            println!("Word not found!");
+                        }
+                    }
 
-                _ => {
-                        println!("Invalid task! Please make sure to choose from insert/ search/ delete ");
-                     }
+                    "3" | "delete" => {
+                        if trie_dictionary.delete(&valid_word) {
+                            println!("The word is deleted!");
+                        } else {
+                            println!("The word is not in the dictionary!");
+                        }
+                    }
 
+                    _ => {}
+                } 
+                
+            }
+
+            Err(message) => {
+                println!("{}", message);
             }
         }
-        
-        Err(message) => {
-                println!("{}", message);
-                continue; 
-        }
+    } 
+
+
+} 
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_trie() {
+        let trie = trie_root::new();
+        assert!(!trie.search("APPLE"));
     }
 
+    #[test]
+    fn test_insert_and_search() {
+        let mut trie = trie_root::new();
 
+        trie.insert("APPLE");
+
+        assert!(trie.search("APPLE"));
+        assert!(!trie.search("BANANA"));
+    }
+
+    #[test]
+    fn test_duplicate_insert() {
+        let mut trie = trie_root::new();
+
+        trie.insert("APPLE");
+        trie.insert("APPLE");
+
+        assert!(trie.search("APPLE"));
+    }
+
+    #[test]
+    fn test_delete() {
+        let mut trie = trie_root::new();
+
+        trie.insert("APPLE");
+
+        assert!(trie.delete("APPLE"));
+        assert!(!trie.search("APPLE"));
+    }
+
+    #[test]
+    fn test_delete_missing_word() {
+        let mut trie = trie_root::new();
+
+        assert!(!trie.delete("BANANA"));
+    }
+
+    #[test]
+    fn test_delete_prefix_preserves_longer_word() {
+        let mut trie = trie_root::new();
+
+        trie.insert("CAR");
+        trie.insert("CART");
+
+        assert!(trie.delete("CAR"));
+        assert!(!trie.search("CAR"));
+        assert!(trie.search("CART"));
+    }
 }
- }
-
-
-
-  
-
